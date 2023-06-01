@@ -25,7 +25,7 @@ from lib import itchat
 from lib.itchat.content import *
 
 
-@itchat.msg_register([TEXT, VOICE, PICTURE, NOTE])
+@itchat.msg_register([TEXT, VOICE, PICTURE, NOTE, ATTACHMENT])
 def handler_single_msg(msg):
     try:
         cmsg = WechatMessage(msg, False)

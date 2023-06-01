@@ -131,6 +131,8 @@ class ChatChannel(Channel):
                     pass
                 elif context["origin_ctype"] == ContextType.IMAGE:  # 如果源消息是私聊的语音消息，允许不匹配前缀，放宽条件
                     pass
+                elif context["origin_ctype"] == ContextType.ATTACHMENT:  # 如果源消息是私聊的语音消息，允许不匹配前缀，放宽条件
+                    pass
                 else:
                     return None
             content = content.strip()
@@ -230,6 +232,15 @@ class ChatChannel(Channel):
                     reply = self._generate_reply(new_context)
                 else:
                     return
+            elif context.type == ContextType.ATTACHMENT and context.content.endswith(".txt"):
+                cmsg = context["msg"]
+                cmsg.prepare()
+                file_path = context.content
+                f = open(file_path,encoding='utf8')
+                lines = f.read()
+                ConsoleClient.log(lines)
+                new_context = self._compose_context(ContextType.TEXT, lines, **context.kwargs)
+                reply = self._generate_reply(new_context)
             else:
                 logger.error("[WX] unknown context type: {}".format(context.type))
                 return
