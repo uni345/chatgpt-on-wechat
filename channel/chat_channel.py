@@ -13,6 +13,15 @@ from common.log import logger
 from config import conf
 from plugins import *
 
+
+from alibabacloud_ocr_api20210707.client import Client as ocr_api20210707Client
+from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_ocr_api20210707 import models as ocr_api_20210707_models
+from alibabacloud_tea_util import models as util_models
+from alibabacloud_tea_console.client import Client as ConsoleClient
+from alibabacloud_tea_util.client import Client as UtilClient
+
+
 try:
     from voice.audio_convert import any_to_wav
 except Exception as e:
@@ -120,6 +129,8 @@ class ChatChannel(Channel):
                     content = content.replace(match_prefix, "", 1).strip()
                 elif context["origin_ctype"] == ContextType.VOICE:  # 如果源消息是私聊的语音消息，允许不匹配前缀，放宽条件
                     pass
+                elif context["origin_ctype"] == ContextType.IMAGE:  # 如果源消息是私聊的语音消息，允许不匹配前缀，放宽条件
+                    pass
                 else:
                     return None
             content = content.strip()
@@ -192,7 +203,33 @@ class ChatChannel(Channel):
                     else:
                         return
             elif context.type == ContextType.IMAGE:  # 图片消息，当前无默认逻辑
-                pass
+
+                cmsg = context["msg"]
+                cmsg.prepare()
+                file_path = context.content
+
+                config = open_api_models.Config(
+                    # 必填，您的 AccessKey ID,
+                    access_key_id=conf().get("ali_access_key"),
+                    # 必填，您的 AccessKey Secret,
+                    access_key_secret=conf().get("ali_access_secret")
+                )
+                # 访问的域名
+                config.endpoint = f'ocr-api.cn-hangzhou.aliyuncs.com'
+                client = ocr_api20210707Client(config)
+                recognize_general_request = ocr_api_20210707_models.RecognizeGeneralRequest()
+                recognize_general_request.body = open(file_path, "rb")
+                runtime = util_models.RuntimeOptions()
+                resp = client.recognize_general_with_options(recognize_general_request, runtime)
+
+                ConsoleClient.log(UtilClient.to_jsonstring(resp))
+                if resp.status_code == 200:
+                    ocr_context = UtilClient.parse_json(resp.body.data)['content']
+                    ConsoleClient.log(ocr_context)
+                    new_context = self._compose_context(ContextType.TEXT, ocr_context, **context.kwargs)
+                    reply = self._generate_reply(new_context)
+                else:
+                    return
             else:
                 logger.error("[WX] unknown context type: {}".format(context.type))
                 return
