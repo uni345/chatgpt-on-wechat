@@ -129,9 +129,9 @@ class ChatChannel(Channel):
                     content = content.replace(match_prefix, "", 1).strip()
                 elif context["origin_ctype"] == ContextType.VOICE:  # 如果源消息是私聊的语音消息，允许不匹配前缀，放宽条件
                     pass
-                elif context["origin_ctype"] == ContextType.IMAGE:  # 如果源消息是私聊的语音消息，允许不匹配前缀，放宽条件
+                elif context["origin_ctype"] == ContextType.IMAGE:  # 如果源消息是私聊的图片消息，允许不匹配前缀，放宽条件
                     pass
-                elif context["origin_ctype"] == ContextType.ATTACHMENT:  # 如果源消息是私聊的语音消息，允许不匹配前缀，放宽条件
+                elif context["origin_ctype"] == ContextType.ATTACHMENT:  # 如果源消息是私聊的文件消息，允许不匹配前缀，放宽条件
                     pass
                 else:
                     return None
@@ -204,16 +204,12 @@ class ChatChannel(Channel):
                         reply = self._generate_reply(new_context)
                     else:
                         return
-            elif context.type == ContextType.IMAGE:  # 图片消息，当前无默认逻辑
-
+            elif context.type == ContextType.IMAGE and conf().get("image_recognition"):
                 cmsg = context["msg"]
                 cmsg.prepare()
                 file_path = context.content
-
                 config = open_api_models.Config(
-                    # 必填，您的 AccessKey ID,
                     access_key_id=conf().get("ali_access_key"),
-                    # 必填，您的 AccessKey Secret,
                     access_key_secret=conf().get("ali_access_secret")
                 )
                 # 访问的域名
@@ -228,19 +224,22 @@ class ChatChannel(Channel):
                 if resp.status_code == 200:
                     ocr_context = UtilClient.parse_json(resp.body.data)['content']
                     ConsoleClient.log(ocr_context)
-                    new_context = self._compose_context(ContextType.TEXT, ocr_context, **context.kwargs)
-                    reply = self._generate_reply(new_context)
+                    if len(ocr_context.strip()) > 0:
+                        new_context = self._compose_context(ContextType.TEXT, ocr_context, **context.kwargs)
+                        reply = self._generate_reply(new_context)
                 else:
                     return
             elif context.type == ContextType.ATTACHMENT and context.content.endswith(".txt"):
                 cmsg = context["msg"]
                 cmsg.prepare()
                 file_path = context.content
-                f = open(file_path,encoding='utf8')
-                lines = f.read()
-                ConsoleClient.log(lines)
-                new_context = self._compose_context(ContextType.TEXT, lines, **context.kwargs)
-                reply = self._generate_reply(new_context)
+                file_size = os.stat(file_path).st_size
+                if file_size < 10*1024*1024:
+                    f = open(file_path, encoding='utf8')
+                    lines = f.read()
+                    ConsoleClient.log(lines)
+                    new_context = self._compose_context(ContextType.TEXT, lines, **context.kwargs)
+                    reply = self._generate_reply(new_context)
             else:
                 logger.error("[WX] unknown context type: {}".format(context.type))
                 return

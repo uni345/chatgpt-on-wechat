@@ -102,6 +102,7 @@ available_setting = {
     # 知识库平台配置
     "linkai_api_key": "",
     "linkai_app_code": "",
+    "image_recognition": False,
     "ali_access_key": "",
     "ali_access_secret": ""
 }
