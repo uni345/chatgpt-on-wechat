@@ -116,7 +116,7 @@ class MidjourneyV2(Plugin):
                                             print(e)
                                         time.sleep(2)
                                         reply.type = ReplyType.TEXT
-                                        reply.content = self.point_uv.format(messageId)
+                                        reply.content = self.point_uv.format(id=messageId)
                                     else:
                                         reply.type = ReplyType.IMAGE_URL
                                         reply.content = http_resp.get("imageUrl")
@@ -159,7 +159,7 @@ class MidjourneyV2(Plugin):
                                         comapp.send(com_reply, e_context['context'])
                                         time.sleep(2)
                                         reply.type = ReplyType.TEXT
-                                        reply.content = self.point_uv.format(messageId)
+                                        reply.content = self.point_uv.format(id=messageId)
                                     except Exception as e:
                                         print(e)
                                 else:
