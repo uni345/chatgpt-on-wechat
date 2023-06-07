@@ -266,7 +266,7 @@ class MidjourneyV2(Plugin):
                                 break
                             time.sleep(5)
                             get_resp = requests.get(url=self.call_back_url.format(messageId), timeout=120.05)
-                        elif _resp.get("status") == "NOT_START":
+                        elif _resp.get("status") == "NOT_START" or _resp.get("status") == "SUBMITTED":
                             if time.time() - out_time > 600:
                                 break
                             time.sleep(20)
