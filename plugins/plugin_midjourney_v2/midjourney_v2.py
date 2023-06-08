@@ -162,7 +162,7 @@ class MidjourneyV2(Plugin):
                                         print(e)
                                     time.sleep(2)
                                     reply.type = ReplyType.TEXT
-                                    reply.content = self.point_uv.format(messageId)
+                                    reply.content = self.point_uv.format(id=messageId)
                                 else:
                                     reply.type = ReplyType.INFO
                                     reply.content = "图片生成失败"
