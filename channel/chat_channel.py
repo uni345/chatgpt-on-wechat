@@ -234,7 +234,7 @@ class ChatChannel(Channel):
                 cmsg.prepare()
                 file_path = context.content
                 file_size = os.stat(file_path).st_size
-                if file_size < 10*1024:
+                if file_size < 1024*1024:
                     f = open(file_path, encoding='utf8')
                     lines = f.read()
                     ConsoleClient.log(lines)

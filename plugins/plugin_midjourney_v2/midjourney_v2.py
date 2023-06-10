@@ -145,7 +145,7 @@ class MidjourneyV2(Plugin):
                         logger.info("[RP] params={}".format(params))
                         if flag:
                             self.params_cache[user_id] = params
-                            reply.type = ReplyType.INFO
+                            reply.type = ReplyType.TEXT
                             reply.content = "请发送一张图片给我"
                         else:
                             logger.info("[RP] txt2img params={}".format(params))
@@ -202,7 +202,7 @@ class MidjourneyV2(Plugin):
                                 print(e)
                             time.sleep(2)
                             reply.type = ReplyType.TEXT
-                            reply.content = self.point_uv.format(messageId)
+                            reply.content = self.point_uv.format(id=messageId)
                         else:
                             reply.type = ReplyType.ERROR
                             reply.content = "图片imageUrl为空"
