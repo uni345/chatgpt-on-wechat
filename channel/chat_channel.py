@@ -215,16 +215,21 @@ class ChatChannel(Channel):
                 # 访问的域名
                 config.endpoint = f'ocr-api.cn-hangzhou.aliyuncs.com'
                 client = ocr_api20210707Client(config)
-                recognize_general_request = ocr_api_20210707_models.RecognizeGeneralRequest()
-                recognize_general_request.body = open(file_path, "rb")
+                recognize_edu_question_ocr_request = ocr_api_20210707_models.RecognizeEduQuestionOcrRequest()
+                recognize_edu_question_ocr_request.body = open(file_path, "rb")
                 runtime = util_models.RuntimeOptions()
-                resp = client.recognize_general_with_options(recognize_general_request, runtime)
+                try:
+                    resp = client.recognize_edu_question_ocr_with_options(recognize_edu_question_ocr_request, runtime)
+                except Exception as error:
+                    ConsoleClient.log(error.message)
 
-                ConsoleClient.log(UtilClient.to_jsonstring(resp))
                 if resp.status_code == 200:
                     ocr_context = UtilClient.parse_json(resp.body.data)['content']
-                    ConsoleClient.log(ocr_context)
+                    ConsoleClient.log("recognize_edu_question_ocr_with_options result: " + ocr_context)
                     if len(ocr_context.strip()) > 0:
+                        com_reply = Reply()
+                        com_reply.type = ReplyType.TEXT
+                        com_reply.content = ocr_context
                         new_context = self._compose_context(ContextType.TEXT, ocr_context, **context.kwargs)
                         reply = self._generate_reply(new_context)
                 else:
