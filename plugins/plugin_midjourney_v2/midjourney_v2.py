@@ -13,7 +13,6 @@ import string
 import time
 import unicodedata
 import requests
-import oss2
 from bridge.context import ContextType
 from bridge.reply import Reply, ReplyType
 from bridge.bridge import Bridge
@@ -57,9 +56,6 @@ class MidjourneyV2(Plugin):
                 self.point_uv = config["point_uv"]
                 self.button_data = config["button_data"]
                 self.rule = config["rule"]
-                self.oss_conf = config["oss_conf"]
-                auth = oss2.Auth(self.oss_conf["akid"], self.oss_conf["akst"])
-                self.bucket_img = oss2.Bucket(auth, self.oss_conf["aked"], self.oss_conf["bucket_name"])
                 self.default_params = config["defaults"]
                 if not self.api_url or "你的API" in self.api_url:
                     raise Exception("please set your Midjourney api in config or environment variable.")
@@ -269,6 +265,7 @@ class MidjourneyV2(Plugin):
                                 break
                             time.sleep(5)
                             get_resp = requests.get(url=self.call_back_url.format(messageId), timeout=120.05)
+                            logger.info("[RP] get_resp={}".format(get_resp.text))
                         elif _resp.get("status") == "NOT_START":
                             if time.time() - out_time > 600:
                                 break
