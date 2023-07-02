@@ -337,10 +337,10 @@ class NewGpt(Plugin):
                     if context.kwargs.get('isgroup'):
                         msg = context.kwargs.get('msg')  # 这是WechatMessage实例
                         nickname = msg.actual_user_nickname  # 获取nickname
-                        com_reply.content = "@{name}\n☑️正在给您实时联网必应搜索\n⏳整理深度数据需要时间，请耐心等待...".format(
+                        com_reply.content = "@{name}\n☑️正在给您实时联网搜索\n⏳整理深度数据需要时间，请耐心等待...".format(
                             name=nickname)
                     else:
-                        com_reply.content = "☑️正在给您实时联网必应搜索\n⏳整理深度数据需要时间，请耐心等待..."
+                        com_reply.content = "☑️正在给您实时联网搜索\n⏳整理深度数据需要时间，请耐心等待..."
                     if self.comapp is not None:
                         self.comapp.send(com_reply, e_context['context'])
                     function_response = fun.search_bing(subscription_key=self.bing_subscription_key, query=search_query,
@@ -354,10 +354,10 @@ class NewGpt(Plugin):
                     if context.kwargs.get('isgroup'):
                         msg = context.kwargs.get('msg')  # 这是WechatMessage实例
                         nickname = msg.actual_user_nickname  # 获取nickname
-                        com_reply.content = "@{name}\n☑️正在给您实时联网谷歌搜索\n⏳整理深度数据需要几分钟，请您耐心等待...".format(
+                        com_reply.content = "@{name}\n☑️正在给您实时联网搜索\n⏳整理深度数据需要几分钟，请您耐心等待...".format(
                             name=nickname)
                     else:
-                        com_reply.content = "☑️正在给您实时联网谷歌搜索\n⏳整理深度数据需要几分钟，请您耐心等待..."
+                        com_reply.content = "☑️正在给您实时联网搜索\n⏳整理深度数据需要几分钟，请您耐心等待..."
                     if self.comapp is not None:
                         self.comapp.send(com_reply, e_context['context'])
                     function_response = google.search_google(search_terms=search_query, base_url=self.google_base_url,iterations=1, count=1,
@@ -486,6 +486,6 @@ class NewGpt(Plugin):
         if not verbose:
             return help_text
         # 否则，添加详细的使用方法到帮助文本中
-        help_text = "newgpt_turbo，极速联网无需特殊指令，前置识别\n🔎谷歌搜索、🔎新闻搜索\n🗞每日早报、☀全球天气\n⌚实时时间、⛽全国油价\n🌌星座运势、🎵音乐（网易云）\n🔥各类热榜信息、📹短视频解析等"
+        help_text = "newgpt_turbo，极速联网无需特殊指令，前置识别\n🔎搜索、🔎新闻搜索\n🗞每日早报、☀全球天气\n⌚实时时间、⛽全国油价\n🌌星座运势、🎵音乐（网易云）\n🔥各类热榜信息、📹短视频解析等"
         # 返回帮助文本
         return help_text
