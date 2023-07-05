@@ -50,7 +50,7 @@ class NewGpt(Plugin):
                 config = json.load(f)
                 logger.debug(f"[newgpt_turbo] config content: {config}")
                 openai.api_key = conf().get("open_ai_api_key")
-                openai.api_base = conf().get("open_ai_api_base")
+                openai.api_base = conf().get("open_ai_api_base","https://api.openai.com/v1")
                 self.alapi_key = config["alapi_key"]
                 self.bing_subscription_key = config["bing_subscription_key"]
                 self.google_api_key = config["google_api_key"]
@@ -82,7 +82,7 @@ class NewGpt(Plugin):
         context = e_context['context'].content[:]
         logger.debug("context:%s" % context)
         all_sessions = Bridge().get_bot("chat").sessions
-        session = all_sessions.session_query(context, e_context["context"]["session_id"])
+        session = all_sessions.session_query(context, e_context["context"]["session_id"], add_to_history=False)
         logger.debug("session.messages:%s" % session.messages)
         if len(session.messages) > 2:
             input_messages = session.messages[-2:]
@@ -486,6 +486,6 @@ class NewGpt(Plugin):
         if not verbose:
             return help_text
         # 否则，添加详细的使用方法到帮助文本中
-        help_text = "newgpt_turbo，极速联网无需特殊指令，前置识别\n🔎搜索、🔎新闻搜索\n🗞每日早报、☀全球天气\n⌚实时时间、⛽全国油价\n🌌星座运势、🎵音乐（网易云）\n🔥各类热榜信息、📹短视频解析等"
+        help_text = "极速联网无需特殊指令，前置识别\n🔎百度搜索、🔎新闻搜索\n🗞每日早报、☀全球天气\n⌚实时时间、⛽全国油价\n🌌星座运势、🎵音乐（网易云）\n🔥各类热榜信息、📹短视频解析等"
         # 返回帮助文本
         return help_text
