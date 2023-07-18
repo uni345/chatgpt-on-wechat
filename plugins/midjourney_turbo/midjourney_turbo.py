@@ -195,7 +195,7 @@ class MidjourneyTurbo(Plugin):
     # 这个方法是一个事件处理方法，当插件接收到指定类型的事件时，会调用这个方法来处理
     def on_handle_context(self, e_context: EventContext):
         # 如果事件的类型不是图片创建或图片，则直接返回，不进行后续处理
-        if e_context['context'].type not in [ContextType.IMAGE_CREATE, ContextType.IMAGE]:
+        if e_context['context'].type not in [ContextType.IMAGE_CREATE]:
             return
         # 将图片请求内容的日志输出
         logger.info("[RP] image_query={}".format(e_context['context'].content))
