@@ -12,9 +12,9 @@ def create_bot(bot_type):
     """
     if bot_type == const.BAIDU:
         # Baidu Unit对话接口
-        from bot.baidu.baidu_unit_bot import BaiduUnitBot
+        from bot.baidu.ernie_turbo_bot import ErnieTurboBot
 
-        return BaiduUnitBot()
+        return ErnieTurboBot()
 
     elif bot_type == const.CHATGPT:
         # ChatGPT 网页端web接口

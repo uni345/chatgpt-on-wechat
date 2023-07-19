@@ -107,9 +107,10 @@ available_setting = {
     "linkai_app_code": "",
     "image_recognition": False,
     "ali_access_key": "",
-    "ali_access_secret": ""
+    "ali_access_secret": "",
+    "baidu_wenxin_api_key":"",
+    "baidu_wenxin_secret_key":""
 }
-
 
 class Config(dict):
     def __init__(self, d=None):
