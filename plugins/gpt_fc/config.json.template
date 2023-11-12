@@ -1,0 +1,11 @@
+{
+  "alapi_key":"", # 使用morning_news_api_key
+  "bing_subscription_key": ""， # 使用bing_subscription_key,如果没有则随便输入
+  "functions_openai_model":"", #函数调用模型，可选gpt-3.5-turbo-0613，gpt-4-0613
+  "assistant_openai_model":"", #汇总模型，建议16k
+  "temperature":, #温度 0-1.0
+  "max_tokens":, #返回tokens限制
+  "prompt": "你是NewGpt，你主要负责帮用户使用这种工具完成用户想要得到的信息，如果没有指定语言，请使用中文交流",  #prompt预设
+  "app_key":"", #nowapi  app_key
+  "app_sign":""#nowapi  app_sign
+}
