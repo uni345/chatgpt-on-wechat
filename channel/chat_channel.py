@@ -12,15 +12,7 @@ from common.dequeue import Dequeue
 from common.log import logger
 from config import conf
 from plugins import *
-
-
-from alibabacloud_ocr_api20210707.client import Client as ocr_api20210707Client
-from alibabacloud_tea_openapi import models as open_api_models
-from alibabacloud_ocr_api20210707 import models as ocr_api_20210707_models
-from alibabacloud_tea_util import models as util_models
-from alibabacloud_tea_console.client import Client as ConsoleClient
-from alibabacloud_tea_util.client import Client as UtilClient
-
+from db.redis_util import RedisUtil
 
 try:
     from voice.audio_convert import any_to_wav
@@ -67,19 +59,19 @@ class ChatChannel(Channel):
                 group_name_white_list = config.get("group_name_white_list", [])
                 group_name_keyword_white_list = config.get("group_name_keyword_white_list", [])
                 if any(
-                    [
-                        group_name in group_name_white_list,
-                        "ALL_GROUP" in group_name_white_list,
-                        check_contain(group_name, group_name_keyword_white_list),
-                    ]
+                        [
+                            group_name in group_name_white_list,
+                            "ALL_GROUP" in group_name_white_list,
+                            check_contain(group_name, group_name_keyword_white_list),
+                        ]
                 ):
                     group_chat_in_one_session = conf().get("group_chat_in_one_session", [])
                     session_id = cmsg.actual_user_id
                     if any(
-                        [
-                            group_name in group_chat_in_one_session,
-                            "ALL_GROUP" in group_chat_in_one_session,
-                        ]
+                            [
+                                group_name in group_chat_in_one_session,
+                                "ALL_GROUP" in group_chat_in_one_session,
+                            ]
                     ):
                         session_id = group_id
                 else:
@@ -89,7 +81,8 @@ class ChatChannel(Channel):
             else:
                 context["session_id"] = cmsg.other_user_id
                 context["receiver"] = cmsg.other_user_id
-            e_context = PluginManager().emit_event(EventContext(Event.ON_RECEIVE_MESSAGE, {"channel": self, "context": context}))
+            e_context = PluginManager().emit_event(
+                EventContext(Event.ON_RECEIVE_MESSAGE, {"channel": self, "context": context}))
             context = e_context["context"]
             if e_context.is_pass() or context is None:
                 return context
@@ -153,10 +146,12 @@ class ChatChannel(Channel):
             else:
                 context.type = ContextType.TEXT
             context.content = content.strip()
-            if "desire_rtype" not in context and conf().get("always_reply_voice") and ReplyType.VOICE not in self.NOT_SUPPORT_REPLYTYPE:
+            if "desire_rtype" not in context and conf().get(
+                    "always_reply_voice") and ReplyType.VOICE not in self.NOT_SUPPORT_REPLYTYPE:
                 context["desire_rtype"] = ReplyType.VOICE
         elif context.type == ContextType.VOICE:
-            if "desire_rtype" not in context and conf().get("voice_reply_voice") and ReplyType.VOICE not in self.NOT_SUPPORT_REPLYTYPE:
+            if "desire_rtype" not in context and conf().get(
+                    "voice_reply_voice") and ReplyType.VOICE not in self.NOT_SUPPORT_REPLYTYPE:
                 context["desire_rtype"] = ReplyType.VOICE
 
         return context
@@ -216,45 +211,25 @@ class ChatChannel(Channel):
                         reply = self._generate_reply(new_context)
                     else:
                         return
-            elif context.type == ContextType.IMAGE and conf().get("image_recognition") and not context.kwargs.get("isgroup"):
+            elif context.type == ContextType.IMAGE and conf().get("image_recognition"):
                 cmsg = context["msg"]
                 cmsg.prepare()
                 file_path = context.content
-                config = open_api_models.Config(
-                    access_key_id=conf().get("ali_access_key"),
-                    access_key_secret=conf().get("ali_access_secret")
-                )
-                # 访问的域名
-                config.endpoint = f'ocr-api.cn-hangzhou.aliyuncs.com'
-                client = ocr_api20210707Client(config)
-                recognize_edu_question_ocr_request = ocr_api_20210707_models.RecognizeEduQuestionOcrRequest()
-                recognize_edu_question_ocr_request.body = open(file_path, "rb")
-                runtime = util_models.RuntimeOptions()
-                try:
-                    resp = client.recognize_edu_question_ocr_with_options(recognize_edu_question_ocr_request, runtime)
-                except Exception as error:
-                    ConsoleClient.log(error.message)
-
-                if resp.status_code == 200:
-                    ocr_context = UtilClient.parse_json(resp.body.data)['content']
-                    ConsoleClient.log("recognize_edu_question_ocr_with_options result: " + ocr_context)
-                    if len(ocr_context.strip()) > 0:
-                        com_reply = Reply()
-                        com_reply.type = ReplyType.TEXT
-                        com_reply.content = ocr_context
-                        new_context = self._compose_context(ContextType.TEXT, ocr_context, **context.kwargs)
-                        reply = self._generate_reply(new_context)
+                if context.get("isgroup", False):
+                    redis_key = context["msg"].from_user_id
                 else:
-                    return
+                    redis_key = context["msg"].from_user_id
+
+                RedisUtil().set_key_with_expiry(redis_key, file_path, 3600)
+
             elif context.type == ContextType.ATTACHMENT and context.content.endswith(".txt"):
                 cmsg = context["msg"]
                 cmsg.prepare()
                 file_path = context.content
                 file_size = os.stat(file_path).st_size
-                if file_size < 1024*1024:
+                if file_size < 1024 * 1024:
                     f = open(file_path, encoding='utf8')
                     lines = f.read()
-                    ConsoleClient.log(lines)
                     new_context = self._compose_context(ContextType.TEXT, lines, **context.kwargs)
                     reply = self._generate_reply(new_context)
             else:
@@ -285,9 +260,11 @@ class ChatChannel(Channel):
                         return self._decorate_reply(context, reply)
                     if context.get("isgroup", False):
                         reply_text = "@" + context["msg"].actual_user_nickname + "\n" + reply_text.strip()
-                        reply_text = conf().get("group_chat_reply_prefix", "") + reply_text + conf().get("group_chat_reply_suffix", "")
+                        reply_text = conf().get("group_chat_reply_prefix", "") + reply_text + conf().get(
+                            "group_chat_reply_suffix", "")
                     else:
-                        reply_text = conf().get("single_chat_reply_prefix", "") + reply_text + conf().get("single_chat_reply_suffix", "")
+                        reply_text = conf().get("single_chat_reply_prefix", "") + reply_text + conf().get(
+                            "single_chat_reply_suffix", "")
                     reply.content = reply_text
                 elif reply.type == ReplyType.ERROR or reply.type == ReplyType.INFO:
                     reply.content = "[" + str(reply.type) + "]\n" + reply.content
@@ -297,7 +274,8 @@ class ChatChannel(Channel):
                     logger.error("[WX] unknown reply type: {}".format(reply.type))
                     return
             if desire_rtype and desire_rtype != reply.type and reply.type not in [ReplyType.ERROR, ReplyType.INFO]:
-                logger.warning("[WX] desire_rtype: {}, but reply type: {}".format(context.get("desire_rtype"), reply.type))
+                logger.warning(
+                    "[WX] desire_rtype: {}, but reply type: {}".format(context.get("desire_rtype"), reply.type))
             return reply
 
     def _send_reply(self, context: Context, reply: Reply):

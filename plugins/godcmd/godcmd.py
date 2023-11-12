@@ -138,7 +138,8 @@ ADMIN_COMMANDS = {
 def get_help_text(isadmin, isgroup):
     help_text = "通用指令\n"
     for cmd, info in COMMANDS.items():
-        if cmd in ["auth", "set_openai_api_key", "reset_openai_api_key", "set_gpt_model", "reset_gpt_model", "gpt_model"]:  # 不显示帮助指令
+        if cmd in ["auth", "set_openai_api_key", "reset_openai_api_key", "set_gpt_model", "reset_gpt_model",
+                   "gpt_model"]:  # 不显示帮助指令
             continue
         if cmd == "id" and conf().get("channel_type", "wx") not in ["wxy", "wechatmp"]:
             continue
@@ -149,24 +150,6 @@ def get_help_text(isadmin, isgroup):
             help_text += f"{' '.join(args)}"
         help_text += f": {info['desc']}\n"
 
-    # 插件指令
-    plugins = PluginManager().list_plugins()
-    help_text += "\n可用插件"
-    for plugin in plugins:
-        if plugins[plugin].enabled and not plugins[plugin].hidden:
-            namecn = plugins[plugin].namecn
-            help_text += "\n%s:" % namecn
-            help_text += PluginManager().instances[plugin].get_help_text(verbose=False).strip()
-
-    if ADMIN_COMMANDS and isadmin:
-        help_text += "\n\n管理员指令：\n"
-        for cmd, info in ADMIN_COMMANDS.items():
-            alias = ["#" + a for a in info["alias"][:1]]
-            help_text += f"{','.join(alias)} "
-            if "args" in info:
-                args = [a for a in info["args"]]
-                help_text += f"{' '.join(args)}"
-            help_text += f": {info['desc']}\n"
     return help_text
 
 
@@ -218,11 +201,11 @@ class Godcmd(Plugin):
 
         content = e_context["context"].content
         logger.debug("[Godcmd] on_handle_context. content: %s" % content)
-        if content.startswith("#"):
-            if len(content) == 1:
+        if content.startswith("---"):
+            if len(content) == 3:
                 reply = Reply()
                 reply.type = ReplyType.ERROR
-                reply.content = f"空指令，输入#help查看指令列表\n"
+                reply.content = f"空指令，输入--help查看指令列表\n"
                 e_context["reply"] = reply
                 e_context.action = EventAction.BREAK_PASS
                 return
@@ -234,7 +217,7 @@ class Godcmd(Plugin):
             bottype = Bridge().get_bot_type("chat")
             bot = Bridge().get_bot("chat")
             # 将命令和参数分割
-            command_parts = content[1:].strip().split()
+            command_parts = content[3:].strip().split()
             cmd = command_parts[0]
             args = command_parts[1:]
             isadmin = False
@@ -246,26 +229,10 @@ class Godcmd(Plugin):
                 cmd = next(c for c, info in COMMANDS.items() if cmd in info["alias"])
                 if cmd == "auth":
                     ok, result = self.authenticate(user, args, isadmin, isgroup)
-                elif cmd == "help" or cmd == "helpp":
-                    if len(args) == 0:
-                        ok, result = True, get_help_text(isadmin, isgroup)
-                    else:
-                        # This can replace the helpp command
-                        plugins = PluginManager().list_plugins()
-                        query_name = args[0].upper()
-                        # search name and namecn
-                        for name, plugincls in plugins.items():
-                            if not plugincls.enabled:
-                                continue
-                            if query_name == name or query_name == plugincls.namecn:
-                                ok, result = True, PluginManager().instances[name].get_help_text(isgroup=isgroup, isadmin=isadmin, verbose=True)
-                                break
-                        if not ok:
-                            result = "插件不存在或未启用"
+                elif cmd == "help":
+                    ok, result = True, "请问您要什么帮助？"
                 elif cmd == "model":
-                    if not isadmin and not self.is_admin_in_group(e_context["context"]):
-                        ok, result = False, "需要管理员权限执行"
-                    elif len(args) == 0:
+                    if len(args) == 0:
                         ok, result = True, "当前模型为: " + str(conf().get("model"))
                     elif len(args) == 1:
                         if args[0] not in const.MODEL_LIST:
@@ -311,7 +278,8 @@ class Godcmd(Plugin):
                     except Exception as e:
                         ok, result = False, "你没有设置私有GPT模型"
                 elif cmd == "reset":
-                    if bottype in [const.OPEN_AI, const.CHATGPT, const.CHATGPTONAZURE, const.LINKAI, const.BAIDU, const.XUNFEI]:
+                    if bottype in [const.OPEN_AI, const.CHATGPT, const.CHATGPTONAZURE, const.LINKAI, const.BAIDU,
+                                   const.XUNFEI]:
                         bot.sessions.clear_session(session_id)
                         if Bridge().chat_bots.get(bottype):
                             Bridge().chat_bots.get(bottype).sessions.clear_session(session_id)
@@ -427,9 +395,9 @@ class Godcmd(Plugin):
 
             reply = Reply()
             if ok:
-                reply.type = ReplyType.INFO
+                reply.type = ReplyType.TEXT
             else:
-                reply.type = ReplyType.ERROR
+                reply.type = ReplyType.INFO
             reply.content = result
             e_context["reply"] = reply
 
@@ -462,12 +430,10 @@ class Godcmd(Plugin):
     def get_help_text(self, isadmin=False, isgroup=False, **kwargs):
         return get_help_text(isadmin, isgroup)
 
-
     def is_admin_in_group(self, context):
         if context["isgroup"]:
             return context.kwargs.get("msg").actual_user_id in global_config["admin_users"]
         return False
-
 
     def model_mapping(self, model) -> str:
         if model == "gpt-4-turbo":

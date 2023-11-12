@@ -75,7 +75,7 @@ available_setting = {
     "voice_to_text": "openai",  # 语音识别引擎，支持openai,baidu,google,azure
     "text_to_voice": "openai",  # 语音合成引擎，支持openai,baidu,google,pytts(offline),azure,elevenlabs
     "text_to_voice_model": "tts-1",
-    "tts_voice_id": "alloy",
+    "tts_voice_id": "alloy",  # alloy, echo, fable, onyx, nova, and shimmer
     # baidu 语音api配置， 使用百度语音识别和语音合成时需要
     "baidu_app_id": "",
     "baidu_api_key": "",
@@ -86,8 +86,8 @@ available_setting = {
     "azure_voice_api_key": "",
     "azure_voice_region": "japaneast",
     # elevenlabs 语音api配置
-    "xi_api_key": "",    #获取ap的方法可以参考https://docs.elevenlabs.io/api-reference/quick-start/authentication
-    "xi_voice_id": "",   #ElevenLabs提供了9种英式、美式等英语发音id，分别是“Adam/Antoni/Arnold/Bella/Domi/Elli/Josh/Rachel/Sam”
+    "xi_api_key": "",  # 获取ap的方法可以参考https://docs.elevenlabs.io/api-reference/quick-start/authentication
+    "xi_voice_id": "",  # ElevenLabs提供了9种英式、美式等英语发音id，分别是“Adam/Antoni/Arnold/Bella/Domi/Elli/Josh/Rachel/Sam”
     # 服务时间限制，目前支持itchat
     "chat_time_module": False,  # 是否开启服务时间限制
     "chat_start_time": "00:00",  # 服务开始时间
@@ -135,8 +135,11 @@ available_setting = {
     "image_recognition": False,
     "ali_access_key": "",
     "ali_access_secret": "",
-    "baidu_wenxin_api_key":"",
-    "baidu_wenxin_secret_key":""
+    "baidu_wenxin_api_key": "",
+    "baidu_wenxin_secret_key": "",
+    "redis_host": "",
+    "redis_pwd": "",
+    "redis_port": ""
 }
 
 

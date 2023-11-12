@@ -13,6 +13,7 @@ import requests
 from common import const
 import datetime, random
 
+
 class OpenaiVoice(Voice):
     def __init__(self):
         openai.api_key = conf().get("open_ai_api_key")
@@ -30,7 +31,6 @@ class OpenaiVoice(Voice):
         finally:
             return reply
 
-
     def textToVoice(self, text):
         try:
             url = 'https://api.openai.com/v1/audio/speech'
@@ -44,7 +44,7 @@ class OpenaiVoice(Voice):
                 'voice': conf().get("tts_voice_id") or "alloy"
             }
             response = requests.post(url, headers=headers, json=data)
-            file_name = "tmp/" + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + str(random.randint(0, 1000)) + ".mp3"
+            file_name = "tmp/" + text[:12] + "_" + datetime.datetime.now().strftime('%Y%m%d%H%M%S')  + ".mp3"
             logger.debug(f"[OPENAI] text_to_Voice file_name={file_name}, input={text}")
             with open(file_name, 'wb') as f:
                 f.write(response.content)
