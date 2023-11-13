@@ -235,7 +235,9 @@ class Godcmd(Plugin):
                     if len(args) == 0:
                         ok, result = True, "当前模型为: " + str(conf().get("model"))
                     elif len(args) == 1:
-                        if args[0] not in const.MODEL_LIST:
+                        if args[0] == 'list':
+                            ok, result = True, "可用模型列表: " + ' '.join(const.MODEL_LIST)
+                        elif args[0] not in const.MODEL_LIST:
                             ok, result = False, "模型名称不存在"
                         else:
                             conf()["model"] = self.model_mapping(args[0])

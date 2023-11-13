@@ -21,3 +21,9 @@ class RedisUtil:
 
     def set_key_with_expiry(self, key, value, expiry_seconds):
         self.client.setex(key, expiry_seconds, value)
+
+    def increment(self, key, amount=1):
+        return self.client.incr(key, amount)
+
+    def decrement(self, key, amount=1):
+        return self.client.decr(key, amount)

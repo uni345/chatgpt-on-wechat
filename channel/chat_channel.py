@@ -13,6 +13,7 @@ from common.log import logger
 from config import conf
 from plugins import *
 from db.redis_util import RedisUtil
+from common import redis_key_const
 
 try:
     from voice.audio_convert import any_to_wav
@@ -216,9 +217,9 @@ class ChatChannel(Channel):
                 cmsg.prepare()
                 file_path = context.content
                 if context.get("isgroup", False):
-                    redis_key = context["msg"].from_user_id
+                    redis_key = redis_key_const.ASK_IMG_PRE + context["msg"].actual_user_id
                 else:
-                    redis_key = context["msg"].from_user_id
+                    redis_key = redis_key_const.ASK_IMG_PRE + context["msg"].from_user_id
 
                 RedisUtil().set_key_with_expiry(redis_key, file_path, 3600)
 

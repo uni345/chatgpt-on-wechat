@@ -12,7 +12,7 @@ from common.log import logger
 from plugins.gpt_fc import function as fun
 from bot.openai.open_ai_vision import describe_image
 from db.redis_util import RedisUtil
-
+from common import redis_key_const
 
 @plugins.register(name="NewGpt", desc="GPT函数调用，实现联网", desire_priority=99, version="0.1", author="chazzjimel", )
 class NewGpt(Plugin):
@@ -53,7 +53,7 @@ class NewGpt(Plugin):
                 logger.debug(f"[NewGpt] config content: {config}")
                 self.alapi_key = config["alapi_key"]
                 self.bing_subscription_key = config["bing_subscription_key"]
-                self.functions_openai_model = conf().get("model","gpt-3.5-turbo")
+                self.functions_openai_model = conf().get("model","gpt-3.5-turbo-0613")
                 self.assistant_openai_model = config["assistant_openai_model"]
                 self.app_key = config["app_key"]
                 self.app_sign = config["app_sign"]
@@ -92,21 +92,23 @@ class NewGpt(Plugin):
             "role": "user",
             "content": content
         })
-
+        openai.api_key = conf().get("open_ai_api_key")
+        openai.proxy = conf().get("proxy")
         response = openai.ChatCompletion.create(
             model=self.functions_openai_model,
             messages=messages,
+            max_tokens=100,
             functions=[
 
                 {
                     "name": "search_bing",
-                    "description": "搜索工具,比如查询天气、搜索最新新闻、头条资讯、当前日期时间等",
+                    "description": "搜索工具, 获取实时信息,比如查询天气, 今日新闻,今天头条",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "query": {
                                 "type": "string",
-                                "description": "关键词信息",
+                                "description": "查询内容",
                             },
                             "count": {
                                 "type": "string",
@@ -147,28 +149,26 @@ class NewGpt(Plugin):
                 logger.debug(f"Function response: {function_response}")
                 return function_response
             elif function_name == "ask_image":
-
                 context = e_context["context"]
                 redis_client = RedisUtil()
                 if context.get("isgroup", False):
-                    redis_key = context["msg"].from_user_id
+                    redis_key =redis_key_const.ASK_IMG_PRE + context["msg"].actual_user_id
                 else:
-                    redis_key = context["msg"].from_user_id
+                    redis_key = redis_key_const.ASK_IMG_PRE + context["msg"].from_user_id
                 logger.debug(f"redis_key : {redis_key}")
                 file_path = redis_client.get_key(redis_key)
                 function_response = None
                 if file_path:
                     function_response = describe_image(file_path, content)
-
                 return function_response
 
         else:
-            # 如果模型不希望调用函数，直接打印其响应
+            # 如果模型不希望调用函数，直接继续
             logger.debug(f"Model response: {message['content']}")  # 打印模型的响应
-            return message['content']
+            return None
 
     def get_help_text(self, verbose=False, **kwargs):
         # 初始化帮助文本，说明利用 midjourney api 来画图
-        help_text = "GPT函数调用，实现联网\n"
+        help_text = "联网搜索最新信息,触发关键字:搜索或联网 \n"
         # 返回帮助文本
         return help_text

@@ -1,6 +1,7 @@
 # encoding:utf-8
 
 import time
+from datetime import datetime
 
 import openai
 import openai.error
@@ -15,6 +16,8 @@ from bridge.reply import Reply, ReplyType
 from common.log import logger
 from common.token_bucket import TokenBucket
 from config import conf, load_config
+from common import redis_key_const
+from db.redis_util import RedisUtil
 
 
 # OpenAI对话模型API (可用)
@@ -75,6 +78,23 @@ class ChatGPTBot(Bot, OpenAIImage):
             #     # reply in stream
             #     return self.reply_text_stream(query, new_query, session_id)
 
+            if context.get("isgroup", False):
+                user_id = context["msg"].actual_user_id
+            else:
+                user_id = context["msg"].from_user_id
+            if "gpt-4" in conf().get("model"):
+                redis_util = RedisUtil()
+                token_left_key = redis_key_const.TOKEN_LEFT_PRE + user_id;
+                token_left = redis_util.get_key(token_left_key)
+
+                if not token_left:
+                    now = datetime.now()
+                    end_of_day = datetime(now.year, now.month, now.day, 23, 59, 59)
+                    remaining_seconds = (end_of_day - now).seconds
+                    redis_util.set_key_with_expiry(token_left_key, 10000, remaining_seconds - 1)
+                elif int(token_left) <= 0:
+                    return Reply(ReplyType.TEXT, "哦豁，你的Token用完了,明天再找我玩吧。嘻嘻")
+
             reply_content = self.reply_text(session, api_key, args=new_args)
             logger.debug(
                 "[CHATGPT] new_query={}, session_id={}, reply_cont={}, completion_tokens={}".format(
@@ -89,6 +109,8 @@ class ChatGPTBot(Bot, OpenAIImage):
             elif reply_content["completion_tokens"] > 0:
                 self.sessions.session_reply(reply_content["content"], session_id, reply_content["total_tokens"])
                 reply = Reply(ReplyType.TEXT, reply_content["content"])
+                if "gpt-4" in conf().get("model"):
+                    redis_util.decrement(redis_key_const.TOKEN_LEFT_PRE + user_id, reply_content["total_tokens"])
             else:
                 reply = Reply(ReplyType.ERROR, reply_content["content"])
                 logger.debug("[CHATGPT] reply {} used 0 tokens.".format(reply_content))
