@@ -139,7 +139,9 @@ available_setting = {
     "baidu_wenxin_secret_key": "",
     "redis_host": "",
     "redis_pwd": "",
-    "redis_port": ""
+    "redis_port": "",
+    "gpt4_token_per_day": 10000,
+    "gpt4_token_not_enough": "你今日的token已用完"
 }
 
 

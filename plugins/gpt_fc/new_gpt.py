@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 import openai
 import plugins
@@ -13,6 +14,7 @@ from plugins.gpt_fc import function as fun
 from bot.openai.open_ai_vision import describe_image
 from db.redis_util import RedisUtil
 from common import redis_key_const
+
 
 @plugins.register(name="NewGpt", desc="GPT函数调用，实现联网", desire_priority=99, version="0.1", author="chazzjimel", )
 class NewGpt(Plugin):
@@ -42,7 +44,12 @@ class NewGpt(Plugin):
     def on_handle_context(self, e_context: EventContext):
         if e_context["context"].type not in [
             ContextType.TEXT
-        ] or e_context["context"].kwargs.get("origin_ctype") == ContextType.VOICE:
+        ]:
+            return
+        if e_context["context"].kwargs.get("origin_ctype") == ContextType.VOICE:
+            return
+
+        if "gpt" not in conf().get("model"):
             return
 
         curdir = os.path.dirname(__file__)
@@ -53,7 +60,7 @@ class NewGpt(Plugin):
                 logger.debug(f"[NewGpt] config content: {config}")
                 self.alapi_key = config["alapi_key"]
                 self.bing_subscription_key = config["bing_subscription_key"]
-                self.functions_openai_model = conf().get("model","gpt-3.5-turbo-0613")
+                self.functions_openai_model = conf().get("model", "gpt-3.5-turbo-0613")
                 self.assistant_openai_model = config["assistant_openai_model"]
                 self.app_key = config["app_key"]
                 self.app_sign = config["app_sign"]
@@ -150,16 +157,30 @@ class NewGpt(Plugin):
                 return function_response
             elif function_name == "ask_image":
                 context = e_context["context"]
-                redis_client = RedisUtil()
-                if context.get("isgroup", False):
-                    redis_key =redis_key_const.ASK_IMG_PRE + context["msg"].actual_user_id
-                else:
-                    redis_key = redis_key_const.ASK_IMG_PRE + context["msg"].from_user_id
+                user_id = context["msg"].actual_user_id if context.get("isgroup", False) else context[
+                    "msg"].from_user_id
+                redis_key = redis_key_const.ASK_IMG_PRE + user_id
                 logger.debug(f"redis_key : {redis_key}")
+                # 检查token用量
+                redis_client = RedisUtil()
+                token_left_key = redis_key_const.TOKEN_LEFT_PRE + user_id;
+                token_left = redis_client.get_key(token_left_key)
+                if not token_left:
+                    now = datetime.now()
+                    end_of_day = datetime(now.year, now.month, now.day, 23, 59, 59)
+                    remaining_seconds = (end_of_day - now).seconds
+                    redis_client.set_key_with_expiry(token_left_key, conf().get("gpt4_token_per_day", 10000),
+                                                     remaining_seconds - 1)
+                elif int(token_left) <= 0:
+                    return conf().get("gpt4_token_not_enough", "今日Token已用完")
+
                 file_path = redis_client.get_key(redis_key)
-                function_response = None
                 if file_path:
-                    function_response = describe_image(file_path, content)
+                    open_ai_response = describe_image(file_path, content)
+                    function_response = open_ai_response.get('choices', [{}])[0].get('message', {}).get('content',
+                                                                                                        'N/A')
+                    total_tokens = open_ai_response.get('usage', {}).get('total_tokens')
+                    redis_client.decrement(redis_key_const.TOKEN_LEFT_PRE + user_id, total_tokens)
                 return function_response
 
         else:

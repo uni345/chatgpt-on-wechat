@@ -93,7 +93,7 @@ class ChatGPTBot(Bot, OpenAIImage):
                     remaining_seconds = (end_of_day - now).seconds
                     redis_util.set_key_with_expiry(token_left_key, 10000, remaining_seconds - 1)
                 elif int(token_left) <= 0:
-                    return Reply(ReplyType.TEXT, "哦豁，你的Token用完了,明天再找我玩吧。嘻嘻")
+                    return Reply(ReplyType.TEXT, conf().get("gpt4_token_not_enough", "今日Token已用完"))
 
             reply_content = self.reply_text(session, api_key, args=new_args)
             logger.debug(

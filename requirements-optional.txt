@@ -27,10 +27,11 @@ wechatpy
 chatgpt_tool_hub==0.4.6
 
 # xunfei spark
-websocket-client==1.2.0
+websocket-client
 
 # claude bot
 curl_cffi
 
 #redis
 redis
+
