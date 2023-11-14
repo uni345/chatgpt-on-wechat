@@ -73,7 +73,7 @@ class OpenaiVoice(Voice):
             data = {
                 "model": "gpt-3.5-turbo",
                 "messages": [
-                    {"role": "system", "content": "将用户输入的内容总结成一句简短的标题"},
+                    {"role": "system", "content": "将下面内容总结成12个字左右的简短标题,不需要标点符号"},
                     {"role": "user", "content": text}
                 ]
             }
