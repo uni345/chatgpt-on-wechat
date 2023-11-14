@@ -1,7 +1,11 @@
 import json
+import re
 from datetime import datetime
 
 import openai
+import requests
+import unicodedata
+
 import plugins
 import os
 
@@ -47,14 +51,10 @@ class NewGpt(Plugin):
             ContextType.TEXT
         ]:
             return
-        if e_context["context"].kwargs.get("origin_ctype") == ContextType.VOICE:
-            return
-
         content = e_context['context'].content[:]  # 获取内容
-
-        if "语音回复" in content or "回复语音" in content or "用语音" in content:
-            e_context["context"].content = content.replace("语音回复我", "").replace("回复语音", "").replace("语音回复",
-                                                                                                           "").replace(
+        if "语音回复" in content or "回复语音" in content or "用语音" in content or "生成音频" in content or "生成音频" in content:
+            e_context["context"].content = content.replace("生成语音","").replace("生成音频","").replace("语音回复我", "").replace("回复语音", "").replace("语音回复",
+                                                                                                             "").replace(
                 "用语音", "")
             e_context["context"]["desire_rtype"] = ReplyType.VOICE
 
@@ -139,7 +139,7 @@ class NewGpt(Plugin):
                 },
                 {
                     "name": "search_bing",
-                    "description": "搜索工具, 根据关键字联网搜索",
+                    "description": "搜索工具,获取最新信息, 根据用户输入的内容联网搜索,比如: AI最新资讯",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -184,9 +184,16 @@ class NewGpt(Plugin):
                 function_response = fun.search_bing(subscription_key=self.bing_subscription_key, query=search_query,
                                                     count=search_count)
                 logger.debug(f"Function response: {function_response}")
+                if e_context["context"].get("desire_rtype") == ReplyType.VOICE:
+                    urls = re.findall(
+                        'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
+                        function_response)
+                    filtered_urls = [url for url in urls if not self.contains_chinese(url)]
+                    first_url = filtered_urls[0] if filtered_urls else None
+                    return self.sum_url(first_url) if first_url else function_response
                 return function_response
 
-            elif function_name == "get_weather" or  function_name == "get_date":
+            elif function_name == "get_weather" or function_name == "get_date":
                 reply = create_bot(const.XUNFEI).reply(content, e_context["context"])
                 return reply.content
 
@@ -228,3 +235,65 @@ class NewGpt(Plugin):
         help_text = "联网搜索最新信息"
         # 返回帮助文本
         return help_text
+
+    def sum_url(self, content):
+        meta = None
+        headers = {
+            'Content-Type': 'application/json',
+            'WebPilot-Friend-UID': 'fatwang2'
+        }
+        logger.info("sum link: " + content)
+        payload = json.dumps({"link": content})
+        try:
+            api_url = "https://gpts.webpilot.ai/api/visit-web"
+            response = requests.request("POST", api_url, headers=headers, data=payload)
+            response.raise_for_status()
+            data = json.loads(response.text)
+            meta = data.get('content')  # 获取data字段
+
+        except requests.exceptions.RequestException as e:
+            logger.info(e)
+            # 如果meta获取成功，发送请求到OpenAI
+        if meta:
+            try:
+                headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {conf().get("open_ai_api_key")}'  # 使用你的OpenAI API密钥
+                }
+                data = {
+                    "model": "gpt-3.5-turbo-16k-0613",
+                    "messages": [
+                        {"role": "system",
+                         "content": "你是一个新闻专家，我会给你发一些网页内容，请你用简单明了的语言做总结,不超过300字"},
+                        {"role": "user", "content": meta}
+                    ]
+                }
+                proxy = conf().get("proxy")
+                proxies = {
+                    'http': proxy,
+                    'https': proxy,
+                } if proxy else {}
+                response = requests.post(
+                    conf().get("open_ai_api_base", "https://api.openai.com/v1") + "/chat/completions", headers=headers,
+                    data=json.dumps(data), proxies=proxies)
+                response.raise_for_status()
+
+                # 处理响应数据
+                response_data = response.json()
+                # 这里可以根据你的需要处理响应数据
+                # 解析 JSON 并获取 content
+                if "choices" in response_data and len(response_data["choices"]) > 0:
+                    first_choice = response_data["choices"][0]
+                    if "message" in first_choice and "content" in first_choice["message"]:
+                        return first_choice["message"]["content"]
+            except requests.exceptions.RequestException as e:
+                # 处理可能出现的错误
+                logger.error(f"Error calling OpenAI API: {e}")
+
+        return "哎呀,搜索数据失败啦,请换一个内容或者再问我一次。"
+
+    def contains_chinese(slef, s):
+        for c in s:
+            if 'CJK UNIFIED' in unicodedata.name(c):
+                return True
+        return False

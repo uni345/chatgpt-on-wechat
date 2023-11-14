@@ -10,6 +10,7 @@ from gtts import gTTS
 from bridge.reply import Reply, ReplyType
 from common.log import logger
 from common.tmp_dir import TmpDir
+from voice.audio_convert import any_to_wav
 from voice.voice import Voice
 
 
@@ -20,7 +21,7 @@ class GoogleVoice(Voice):
         pass
 
     def voiceToText(self, voice_file):
-        with speech_recognition.AudioFile(voice_file) as source:
+        with speech_recognition.AudioFile(voice_file.replace(".mp3",".wav")) as source:
             audio = self.recognizer.record(source)
         try:
             text = self.recognizer.recognize_google(audio, language="zh-CN")

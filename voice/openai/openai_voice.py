@@ -15,6 +15,7 @@ from voice.voice import Voice
 import requests
 from common import const
 import datetime, random
+import re
 
 
 class OpenaiVoice(Voice):
@@ -53,7 +54,8 @@ class OpenaiVoice(Voice):
             } if proxy else {}
 
             response = requests.post(url, headers=headers, json=data, proxies=proxies)
-            file_name = "tmp/" + self.generate_file_name(text) + ".mp3"
+            gen_file_name = self.generate_file_name(text)
+            file_name = "tmp/" + re.split(r'([.。,，;；!！?？\\n])', gen_file_name)[0] + ".mp3"
             logger.debug(f"[OPENAI] text_to_Voice file_name={file_name}, input={text}")
             with open(file_name, 'wb') as f:
                 f.write(response.content)
@@ -61,7 +63,7 @@ class OpenaiVoice(Voice):
             reply = Reply(ReplyType.VOICE, file_name)
         except Exception as e:
             logger.error(e)
-            reply = Reply(ReplyType.ERROR, "遇到了一点小问题，请稍后再问我吧")
+            reply = Reply(ReplyType.TEXT, "哦,遇到了一点小问题，请换个内容或者再试一次吧")
         return reply
 
     def generate_file_name(self, text):
@@ -73,7 +75,7 @@ class OpenaiVoice(Voice):
             data = {
                 "model": "gpt-3.5-turbo",
                 "messages": [
-                    {"role": "system", "content": "将下面内容总结成12个字左右的简短标题,不需要标点符号"},
+                    {"role": "system", "content": "将下面内容总结成2-10个字的短语"},
                     {"role": "user", "content": text}
                 ]
             }
