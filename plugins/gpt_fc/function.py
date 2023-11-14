@@ -29,7 +29,7 @@ def search_bing(subscription_key, query, count=10):
 
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M')
         query = query.replace('搜索', '')
-        refined_news = f"当前时间 {current_time},  以下是 '{query}' 的搜索结果：\n\n"
+        refined_news = f"北京时间 {current_time}\n 以下是 '{query}' 的搜索结果：\n\n"
         if news_data:
             for news_item in news_data:
                 url = unquote(news_item.get('url', "N/A"))
