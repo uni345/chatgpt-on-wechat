@@ -7,13 +7,14 @@ import os
 
 from bridge.context import ContextType
 from bridge.reply import Reply, ReplyType
-from channel.chat_message import ChatMessage
 from plugins import *
 from common.log import logger
 from plugins.gpt_fc import function as fun
 from bot.openai.open_ai_vision import describe_image
 from db.redis_util import RedisUtil
 from common import redis_key_const
+from common import const
+from bot.bot_factory import create_bot
 
 
 @plugins.register(name="NewGpt", desc="GPT函数调用，实现联网", desire_priority=99, version="0.1", author="chazzjimel", )
@@ -49,6 +50,14 @@ class NewGpt(Plugin):
         if e_context["context"].kwargs.get("origin_ctype") == ContextType.VOICE:
             return
 
+        content = e_context['context'].content[:]  # 获取内容
+
+        if "语音回复" in content or "回复语音" in content or "用语音" in content:
+            e_context["context"].content = content.replace("语音回复我", "").replace("回复语音", "").replace("语音回复",
+                                                                                                           "").replace(
+                "用语音", "")
+            e_context["context"]["desire_rtype"] = ReplyType.VOICE
+
         if "gpt" not in conf().get("model"):
             return
 
@@ -73,7 +82,6 @@ class NewGpt(Plugin):
                 logger.warn("[RP] init failed." + str(e))
             raise e
         reply = Reply()  # 创建一个回复对象
-        content = e_context['context'].content[:]  # 获取内容
         if "help" in content or "帮助" in content:  # 如果用户请求帮助
             reply.type = ReplyType.INFO
             reply.content = self.get_help_text(verbose=True)
@@ -106,10 +114,32 @@ class NewGpt(Plugin):
             messages=messages,
             max_tokens=100,
             functions=[
+                {
+                    "name": "get_weather",
+                    "description": "获取全球指定城市的天气信息,获取当前日期和时间",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "cityNm": {
+                                "type": "string",
+                                "description": "City names using Chinese characters, such as: 武汉, 广州, 深圳, 东京, 伦敦",
+                            },
 
+                        },
+                        "required": ["cityNm"],
+                    },
+                },
+                {
+                    "name": "get_date",
+                    "description": "获取日期相关信息,比如今天是几号,明天是几号,昨天是几号,今天星期几等",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                    },
+                },
                 {
                     "name": "search_bing",
-                    "description": "搜索工具, 获取实时信息,比如查询天气, 今日新闻,今天头条",
+                    "description": "搜索工具, 根据关键字联网搜索",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -155,6 +185,11 @@ class NewGpt(Plugin):
                                                     count=search_count)
                 logger.debug(f"Function response: {function_response}")
                 return function_response
+
+            elif function_name == "get_weather" or  function_name == "get_date":
+                reply = create_bot(const.XUNFEI).reply(content, e_context["context"])
+                return reply.content
+
             elif function_name == "ask_image":
                 context = e_context["context"]
                 user_id = context["msg"].actual_user_id if context.get("isgroup", False) else context[
@@ -190,6 +225,6 @@ class NewGpt(Plugin):
 
     def get_help_text(self, verbose=False, **kwargs):
         # 初始化帮助文本，说明利用 midjourney api 来画图
-        help_text = "联网搜索最新信息,触发关键字:搜索或联网 \n"
+        help_text = "联网搜索最新信息"
         # 返回帮助文本
         return help_text

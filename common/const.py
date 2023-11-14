@@ -6,9 +6,10 @@ XUNFEI = "xunfei"
 CHATGPTONAZURE = "chatGPTOnAzure"
 LINKAI = "linkai"
 CLAUDEAI = "claude"
-
+WENXIN = "wenxin"
 # model
-GPT4 = "gpt-4"
+GPT4 = "gpt-4-1106-preview"
+GPT3 = "gpt-3.5-turbo"
 GPT4_TURBO_PREVIEW = "gpt-4-1106-preview"
 GPT4_VISION_PREVIEW = "gpt-4-vision-preview"
 WHISPER_1 = "whisper-1"

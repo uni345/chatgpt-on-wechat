@@ -1,3 +1,5 @@
+from urllib.parse import unquote
+
 import requests
 from datetime import datetime
 
@@ -25,19 +27,19 @@ def search_bing(subscription_key, query, count=10):
         news_data = data.get('news', {}).get('value', [])
         web_pages = data.get('webPages', {}).get('value', []),
 
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M')
         query = query.replace('搜索', '')
         refined_news = f"当前时间 {current_time},  以下是 '{query}' 的搜索结果：\n\n"
         if news_data:
             for news_item in news_data:
-                url = news_item.get('url', "N/A")
+                url = unquote(news_item.get('url', "N/A"))
                 refined_news += f"🚀 ** {news_item.get('name', 'N/A')} **\n"
                 description = news_item.get('description', 'N/A')
                 refined_news += f"{description}\n"
                 refined_news += f"查看详情: {url}\n\n"
         elif web_pages:
             for item in web_pages[0]:
-                url = item.get('url', 'N/A')
+                url = unquote(item.get('url', 'N/A'))
                 name = item.get('name', 'N/A')
                 refined_news += f"🚀 **: {name} **\n\n"
                 refined_news += f"查看详情: {url}\n\n"

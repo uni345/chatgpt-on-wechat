@@ -199,7 +199,36 @@ class Godcmd(Plugin):
                 e_context.action = EventAction.BREAK_PASS
             return
 
+        user = e_context["context"]["session_id"]
         content = e_context["context"].content
+        isadmin = False
+        if user in self.admin_users:
+            isadmin = True
+        rst = None;
+        if isadmin:
+            if "切换到讯飞星火" in content.lower():
+                conf()["model"] = const.XUNFEI
+                Bridge().reset_bot()
+                rst = "模型已切换为: 讯飞星火"
+            elif "切换到文心一言" in content.lower():
+                conf()["model"] = const.WENXIN
+                Bridge().reset_bot()
+                rst = "模型已切换为: 文心一言"
+            elif "切换到gpt4" in content.lower() or "切换到gpt-4" in content.lower():
+                conf()["model"] = const.GPT4_TURBO_PREVIEW
+                Bridge().reset_bot()
+                rst = "模型已切换为: GTP-4"
+            elif "切换到gpt3.5" in content.lower() or "切换到gpt-3.5" in content.lower():
+                conf()["model"] = const.GPT3
+                Bridge().reset_bot()
+                rst = "模型已切换为: GTP-3.5"
+            if rst:
+                reply = Reply()
+                reply.type = ReplyType.TEXT
+                reply.content = rst
+                e_context["reply"] = reply
+                e_context.action = EventAction.BREAK_PASS
+                return
         logger.debug("[Godcmd] on_handle_context. content: %s" % content)
         if content.startswith("---"):
             if len(content) == 3:
@@ -211,7 +240,6 @@ class Godcmd(Plugin):
                 return
             # msg = e_context['context']['msg']
             channel = e_context["channel"]
-            user = e_context["context"]["receiver"]
             session_id = e_context["context"]["session_id"]
             isgroup = e_context["context"].get("isgroup", False)
             bottype = Bridge().get_bot_type("chat")
@@ -220,9 +248,7 @@ class Godcmd(Plugin):
             command_parts = content[3:].strip().split()
             cmd = command_parts[0]
             args = command_parts[1:]
-            isadmin = False
-            if user in self.admin_users:
-                isadmin = True
+
             ok = False
             result = "string"
             if any(cmd in info["alias"] for info in COMMANDS.values()):
