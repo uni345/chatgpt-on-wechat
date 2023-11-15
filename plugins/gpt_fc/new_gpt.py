@@ -57,16 +57,25 @@ class NewGpt(Plugin):
             "msg"].from_user_id
         pattern_cv = r"取消语音|取消音频|取消语音回复|取消音频回复|不要生成音频"
         pattern_sv = r"语音回复| 语音回复我$|回复语音|用语音| 生成音频$|生成音频给我$|生成语音$|生成语音给我$"
+        pattern_sl = r"^用日语|^用韩语|^用英语|^用德语|^用粤语|^用葡萄牙语|^用印度语|^用越南语|^用朝鲜语|^用马来西亚语|^用俄语"
         if re.search(pattern_cv, content):
             e_context["context"]["desire_rtype"] = ReplyType.TEXT
             redis_key = redis_key_const.VOICE_REPLY_PRE + user_id
             RedisUtil().delete_key(redis_key)
+        elif re.search(pattern_sl, content):
+            e_context["context"]["desire_rtype"] = ReplyType.VOICE
+            return
         elif re.search(pattern_sv, content):
             # 替换所有匹配的子串为空字符串
             filter_context = re.sub(pattern_sv, "", content).strip()
             if len(filter_context) == 0:
                 redis_key = redis_key_const.VOICE_REPLY_PRE + user_id
                 RedisUtil().set_key_with_expiry(redis_key, "1", 3600)
+                reply = Reply()  # 创建一个回复对象
+                reply.type = ReplyType.TEXT
+                reply.content = "好的,我将用语音回复您。"
+                e_context["reply"] = reply
+                e_context.action = EventAction.BREAK_PASS
                 return
             e_context["context"].content = filter_context
             e_context["context"]["desire_rtype"] = ReplyType.VOICE

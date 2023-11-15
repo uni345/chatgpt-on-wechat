@@ -26,7 +26,7 @@ class OpenaiVoice(Voice):
         logger.debug("[Openai] voice file name={}".format(voice_file))
         try:
             file = open(voice_file, "rb")
-            result = openai.Audio.transcribe("whisper-1", file)
+            result = openai.Audio.transcribe("whisper-1", file, language="zh", initial_prompt="以下是普通话的句子")
             text = result["text"]
             reply = Reply(ReplyType.TEXT, text)
             logger.info("[Openai] voiceToText text={} voice file name={}".format(text, voice_file))
@@ -76,7 +76,7 @@ class OpenaiVoice(Voice):
             data = {
                 "model": "gpt-3.5-turbo",
                 "messages": [
-                    {"role": "system", "content": "将下面内容生成标题,16字以内"},
+                    {"role": "system", "content": "将下面内容生成中文标题,16字以内"},
                     {"role": "user", "content": text}
                 ]
             }

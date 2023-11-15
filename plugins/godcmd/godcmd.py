@@ -218,7 +218,7 @@ class Godcmd(Plugin):
                 conf()["model"] = const.GPT4_TURBO_PREVIEW
                 Bridge().reset_bot()
                 rst = "模型已切换为: GTP-4"
-            elif "切换到gpt3.5" in content.lower() or "切换到gpt-3.5" in content.lower():
+            elif "切换到gpt3" in content.lower() or "切换到gpt3.5" in content.lower() or "切换到gpt-3.5" in content.lower():
                 conf()["model"] = const.GPT3
                 Bridge().reset_bot()
                 rst = "模型已切换为: GTP-3.5"
