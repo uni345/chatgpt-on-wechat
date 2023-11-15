@@ -26,7 +26,8 @@ class OpenaiVoice(Voice):
         logger.debug("[Openai] voice file name={}".format(voice_file))
         try:
             file = open(voice_file, "rb")
-            result = openai.Audio.transcribe("whisper-1", file, language="zh", initial_prompt="以下是普通话的句子")
+            result = openai.Audio.transcribe("whisper-1", file, language="zh", prompt="以下是普通话的句子",
+                                             initial_prompt="以下是普通话的句子")
             text = result["text"]
             reply = Reply(ReplyType.TEXT, text)
             logger.info("[Openai] voiceToText text={} voice file name={}".format(text, voice_file))
@@ -56,7 +57,7 @@ class OpenaiVoice(Voice):
             response = requests.post(url, headers=headers, json=data, proxies=proxies)
             gen_file_name = self.generate_file_name(text)
             pre_title = re.split(r'([.。,，;；!！?？\n])', gen_file_name)[0]
-            file_name = "tmp/" + re.sub(r"[^\u4e00-\u9fa5a-zA-Z0-9\s]", "", pre_title).replace(" ","-")[:16] + ".mp3"
+            file_name = "tmp/" + re.sub(r"[^\u4e00-\u9fa5a-zA-Z0-9\s]", "", pre_title).replace(" ", "-")[:16] + ".mp3"
             logger.debug(f"[OPENAI] text_to_Voice file_name={file_name}, input={text}")
             with open(file_name, 'wb') as f:
                 f.write(response.content)
