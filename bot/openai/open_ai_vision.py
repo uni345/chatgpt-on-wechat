@@ -21,7 +21,11 @@ def describe_image(image_path, question):
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
     }
-
+    proxy = conf().get("proxy")
+    proxies = {
+        'http': proxy,
+        'https': proxy,
+    } if proxy else {}
     payload = {
         "model": "gpt-4-vision-preview",
         "messages": [
@@ -30,7 +34,7 @@ def describe_image(image_path, question):
                 "content": [
                     {
                         "type": "text",
-                        "text": f"请正确回答: {question} "
+                        "text": f"{question} "
                     },
                     {
                         "type": "image_url",
@@ -44,6 +48,6 @@ def describe_image(image_path, question):
         "max_tokens": 1000
     }
 
-    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload,proxies = proxies)
     print(response.json())
     return response.json()

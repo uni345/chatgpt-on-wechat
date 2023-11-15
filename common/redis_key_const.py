@@ -1,4 +1,8 @@
 ASK_IMG_PRE = "askImg-"
+LATS_GROUP_IMG_PRE = "lastGroupImg-"
 ASK_FILE_PRE = "askFile-"
 TOKEN_USED_PRE = "tokenUsed-"
 TOKEN_LEFT_PRE = "tokenLeft-"
+TOKEN_LEFT_PRE = "tokenLeft-"
+VOICE_REPLY_PRE = "voiceReply-"
+USER_IMAGE_LEFT = "imageLeft-"

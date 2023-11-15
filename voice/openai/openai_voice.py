@@ -55,7 +55,8 @@ class OpenaiVoice(Voice):
 
             response = requests.post(url, headers=headers, json=data, proxies=proxies)
             gen_file_name = self.generate_file_name(text)
-            file_name = "tmp/" + re.split(r'([.。,，;；!！?？\\n])', gen_file_name)[0] + ".mp3"
+            pre_title = re.split(r'([.。,，;；!！?？\n])', gen_file_name)[0]
+            file_name = "tmp/" + re.sub(r"[^\u4e00-\u9fa5a-zA-Z0-9\s]", "", pre_title).replace(" ","-")[:16] + ".mp3"
             logger.debug(f"[OPENAI] text_to_Voice file_name={file_name}, input={text}")
             with open(file_name, 'wb') as f:
                 f.write(response.content)
@@ -75,7 +76,7 @@ class OpenaiVoice(Voice):
             data = {
                 "model": "gpt-3.5-turbo",
                 "messages": [
-                    {"role": "system", "content": "将下面内容总结成2-10个字的短语"},
+                    {"role": "system", "content": "将下面内容生成标题,16字以内"},
                     {"role": "user", "content": text}
                 ]
             }

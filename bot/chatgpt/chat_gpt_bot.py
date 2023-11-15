@@ -105,27 +105,45 @@ class ChatGPTBot(Bot, OpenAIImage):
                 )
             )
             if reply_content["completion_tokens"] == 0 and len(reply_content["content"]) > 0:
-                reply = Reply(ReplyType.ERROR, reply_content["content"])
+                reply = Reply(ReplyType.TEXT, reply_content["content"])
             elif reply_content["completion_tokens"] > 0:
                 self.sessions.session_reply(reply_content["content"], session_id, reply_content["total_tokens"])
                 reply = Reply(ReplyType.TEXT, reply_content["content"])
                 if "gpt-4" in conf().get("model"):
-                    redis_util.decrement(redis_key_const.TOKEN_LEFT_PRE + user_id, reply_content["total_tokens"])
+                    redis_util.decrement(token_left_key, reply_content["total_tokens"])
             else:
-                reply = Reply(ReplyType.ERROR, reply_content["content"])
+                reply = Reply(ReplyType.TEXT, reply_content["content"])
                 logger.debug("[CHATGPT] reply {} used 0 tokens.".format(reply_content))
             return reply
 
         elif context.type == ContextType.IMAGE_CREATE:
+            if context.get("isgroup", False):
+                user_id = context["msg"].actual_user_id
+            else:
+                user_id = context["msg"].from_user_id
+            redis_util = RedisUtil()
+            image_left_key = redis_key_const.USER_IMAGE_LEFT + user_id;
+            time_left = redis_util.get_key(image_left_key)
+
+            if not time_left:
+                now = datetime.now()
+                end_of_day = datetime(now.year, now.month, now.day, 23, 59, 59)
+                remaining_seconds = (end_of_day - now).seconds
+                redis_util.set_key_with_expiry(image_left_key, conf().get("image_max_per_day", 3),
+                                               remaining_seconds - 1)
+            elif int(time_left) <= 0:
+                return Reply(ReplyType.TEXT, "今日绘画次数已用完")
+
             ok, retstring = self.create_img(query, 0)
             reply = None
             if ok:
                 reply = Reply(ReplyType.IMAGE_URL, retstring)
+                redis_util.decrement(image_left_key, 1)
             else:
-                reply = Reply(ReplyType.ERROR, retstring)
+                reply = Reply(ReplyType.TEXT, retstring)
             return reply
         else:
-            reply = Reply(ReplyType.ERROR, "Bot不支持处理{}类型的消息".format(context.type))
+            reply = Reply(ReplyType.TEXT, "Bot不支持处理{}类型的消息".format(context.type))
             return reply
 
     def reply_text(self, session: ChatGPTSession, api_key=None, args=None, retry_count=0) -> dict:

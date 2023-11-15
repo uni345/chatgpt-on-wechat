@@ -49,6 +49,44 @@ def search_bing(subscription_key, query, count=10):
         raise ex
 
 
+
+def search_bing_url(subscription_key, query, count=10):
+    """
+    This function makes a call to the Bing Web Search API with a query and returns relevant web search.
+    Documentation: https://docs.microsoft.com/en-us/bing/search-apis/bing-web-search/overview
+    """
+    # Construct a request
+    endpoint = "https://api.bing.microsoft.com/v7.0/search"
+    mkt = 'zh-CN'
+    params = {'q': query, 'mkt': mkt, 'count': count}
+    headers = {'Ocp-Apim-Subscription-Key': subscription_key}
+
+    # Call the API
+    try:
+        response = requests.get(endpoint, headers=headers, params=params)
+        response.raise_for_status()
+
+        # Parse the response
+        data = response.json()
+
+        # Extract the required news data
+        news_data = data.get('news', {}).get('value', [])
+        web_pages = data.get('webPages', {}).get('value', []),
+
+        urls =[]
+        if news_data:
+            for news_item in news_data:
+                urls.append(news_item.get('url', "N/A"))
+
+        elif web_pages:
+            for item in web_pages[0]:
+                urls.append(item.get('url', "N/A"))
+
+        return urls
+    except Exception as ex:
+        raise ex
+
+
 def get_hotlist(api_key, type):
     """获取热榜信息的实现代码，但不返回链接信息"""
     type_mapping = {

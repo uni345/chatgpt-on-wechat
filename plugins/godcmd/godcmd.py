@@ -222,13 +222,26 @@ class Godcmd(Plugin):
                 conf()["model"] = const.GPT3
                 Bridge().reset_bot()
                 rst = "模型已切换为: GTP-3.5"
-            if rst:
-                reply = Reply()
-                reply.type = ReplyType.TEXT
-                reply.content = rst
-                e_context["reply"] = reply
-                e_context.action = EventAction.BREAK_PASS
-                return
+
+        if "查看模型" == content or "当前模型" == content:
+            model = conf().get("model")
+            if model == const.GPT3:
+                rst = "当前模型: GTP-3.5"
+            elif model == const.GPT4_TURBO_PREVIEW:
+                rst = "当前模型: GPT-4"
+            elif model == const.WENXIN:
+                rst = "当前模型: 文心一言"
+            elif model == const.XUNFEI:
+                rst = "当前模型: 讯飞星火"
+
+        if rst:
+            reply = Reply()
+            reply.type = ReplyType.TEXT
+            reply.content = rst
+            e_context["reply"] = reply
+            e_context.action = EventAction.BREAK_PASS
+            return
+
         logger.debug("[Godcmd] on_handle_context. content: %s" % content)
         if content.startswith("---"):
             if len(content) == 3:

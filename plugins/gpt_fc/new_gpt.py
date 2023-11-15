@@ -51,15 +51,30 @@ class NewGpt(Plugin):
             ContextType.TEXT
         ]:
             return
-        content = e_context['context'].content[:]  # 获取内容
-        if "语音回复" in content or "回复语音" in content or "用语音" in content or "生成音频" in content or "生成音频" in content:
-            e_context["context"].content = content.replace("生成语音","").replace("生成音频","").replace("语音回复我", "").replace("回复语音", "").replace("语音回复",
-                                                                                                             "").replace(
-                "用语音", "")
+        context = e_context["context"]
+        content = e_context["context"].content
+        user_id = context["msg"].actual_user_id if context.get("isgroup", False) else context[
+            "msg"].from_user_id
+        pattern_cv = r"取消语音|取消音频|取消语音回复|取消音频回复|不要生成音频"
+        pattern_sv = r"语音回复| 语音回复我$|回复语音|用语音| 生成音频$|生成音频给我$|生成语音$|生成语音给我$"
+        if re.search(pattern_cv, content):
+            e_context["context"]["desire_rtype"] = ReplyType.TEXT
+            redis_key = redis_key_const.VOICE_REPLY_PRE + user_id
+            RedisUtil().delete_key(redis_key)
+        elif re.search(pattern_sv, content):
+            # 替换所有匹配的子串为空字符串
+            filter_context = re.sub(pattern_sv, "", content).strip()
+            if len(filter_context) == 0:
+                redis_key = redis_key_const.VOICE_REPLY_PRE + user_id
+                RedisUtil().set_key_with_expiry(redis_key, "1", 3600)
+                return
+            e_context["context"].content = filter_context
             e_context["context"]["desire_rtype"] = ReplyType.VOICE
-
-        if "gpt" not in conf().get("model"):
-            return
+        else:
+            redis_key = redis_key_const.VOICE_REPLY_PRE + user_id
+            redis_value = RedisUtil().get_key(redis_key)
+            if redis_value and int(redis_value) == 1:
+                e_context["context"]["desire_rtype"] = ReplyType.VOICE
 
         curdir = os.path.dirname(__file__)
         config_path = os.path.join(curdir, "config.json")
@@ -69,7 +84,7 @@ class NewGpt(Plugin):
                 logger.debug(f"[NewGpt] config content: {config}")
                 self.alapi_key = config["alapi_key"]
                 self.bing_subscription_key = config["bing_subscription_key"]
-                self.functions_openai_model = conf().get("model", "gpt-3.5-turbo-0613")
+                self.functions_openai_model = config['functions_openai_model']
                 self.assistant_openai_model = config["assistant_openai_model"]
                 self.app_key = config["app_key"]
                 self.app_sign = config["app_sign"]
@@ -139,17 +154,13 @@ class NewGpt(Plugin):
                 },
                 {
                     "name": "search_bing",
-                    "description": "搜索工具,获取最新信息, 根据用户输入的内容联网搜索,比如: AI最新资讯",
+                    "description": "搜索工具,根据用户输入的内容获取最新和实时信息,关键字：搜, 最新, 新闻",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "query": {
                                 "type": "string",
                                 "description": "查询内容",
-                            },
-                            "count": {
-                                "type": "string",
-                                "description": "搜索页数,如无指定几页，默认10",
                             }
                         },
                         "required": ["query"],
@@ -180,18 +191,20 @@ class NewGpt(Plugin):
                 function_args_str = message["function_call"].get("arguments", "{}")
                 function_args = json.loads(function_args_str)  # 使用 json.loads 将字符串转换为字典
                 search_query = function_args.get("query", "未指定关键词")
-                search_count = function_args.get("count", 10)
-                function_response = fun.search_bing(subscription_key=self.bing_subscription_key, query=search_query,
-                                                    count=search_count)
-                logger.debug(f"Function response: {function_response}")
+
                 if e_context["context"].get("desire_rtype") == ReplyType.VOICE:
-                    urls = re.findall(
-                        'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
-                        function_response)
-                    filtered_urls = [url for url in urls if not self.contains_chinese(url)]
-                    first_url = filtered_urls[0] if filtered_urls else None
-                    return self.sum_url(first_url) if first_url else function_response
-                return function_response
+                    filtered_urls = fun.search_bing_url(subscription_key=self.bing_subscription_key, query=search_query,
+                                                        count=5)
+                    pattern = r"https://www\.msn\.cn"
+                    for url in filtered_urls:
+                        unsupported = re.search(pattern, url)
+                        if not unsupported:
+                            return self.sum_url(url)
+                else:
+                    function_response = fun.search_bing(subscription_key=self.bing_subscription_key, query=search_query,
+                                                        count=5)
+                    logger.debug(f"Function response: {function_response}")
+                    return function_response
 
             elif function_name == "get_weather" or function_name == "get_date":
                 reply = create_bot(const.XUNFEI).reply(content, e_context["context"])
@@ -201,8 +214,7 @@ class NewGpt(Plugin):
                 context = e_context["context"]
                 user_id = context["msg"].actual_user_id if context.get("isgroup", False) else context[
                     "msg"].from_user_id
-                redis_key = redis_key_const.ASK_IMG_PRE + user_id
-                logger.debug(f"redis_key : {redis_key}")
+
                 # 检查token用量
                 redis_client = RedisUtil()
                 token_left_key = redis_key_const.TOKEN_LEFT_PRE + user_id;
@@ -216,9 +228,16 @@ class NewGpt(Plugin):
                 elif int(token_left) <= 0:
                     return conf().get("gpt4_token_not_enough", "今日Token已用完")
 
+                redis_key = redis_key_const.ASK_IMG_PRE + user_id
+                logger.debug(f"redis_key : {redis_key}")
                 file_path = redis_client.get_key(redis_key)
+                # 如果不是个人图片 读取群图片
+                if not file_path and context.get("isgroup", False):
+                    group_key = redis_key_const.LATS_GROUP_IMG_PRE + context["msg"].from_user_id
+                    file_path = redis_client.get_key(group_key)
+
                 if file_path:
-                    open_ai_response = describe_image(file_path, content)
+                    open_ai_response = describe_image(file_path.decode(), content)
                     function_response = open_ai_response.get('choices', [{}])[0].get('message', {}).get('content',
                                                                                                         'N/A')
                     total_tokens = open_ai_response.get('usage', {}).get('total_tokens')
@@ -254,43 +273,68 @@ class NewGpt(Plugin):
         except requests.exceptions.RequestException as e:
             logger.info(e)
             # 如果meta获取成功，发送请求到OpenAI
-        if meta:
-            try:
-                headers = {
-                    'Content-Type': 'application/json',
-                    'Authorization': f'Bearer {conf().get("open_ai_api_key")}'  # 使用你的OpenAI API密钥
-                }
-                data = {
-                    "model": "gpt-3.5-turbo-16k-0613",
-                    "messages": [
-                        {"role": "system",
-                         "content": "你是一个新闻专家，我会给你发一些网页内容，请你用简单明了的语言做总结,不超过300字"},
-                        {"role": "user", "content": meta}
-                    ]
-                }
-                proxy = conf().get("proxy")
-                proxies = {
-                    'http': proxy,
-                    'https': proxy,
-                } if proxy else {}
-                response = requests.post(
-                    conf().get("open_ai_api_base", "https://api.openai.com/v1") + "/chat/completions", headers=headers,
-                    data=json.dumps(data), proxies=proxies)
-                response.raise_for_status()
-
-                # 处理响应数据
-                response_data = response.json()
-                # 这里可以根据你的需要处理响应数据
-                # 解析 JSON 并获取 content
-                if "choices" in response_data and len(response_data["choices"]) > 0:
-                    first_choice = response_data["choices"][0]
-                    if "message" in first_choice and "content" in first_choice["message"]:
-                        return first_choice["message"]["content"]
-            except requests.exceptions.RequestException as e:
-                # 处理可能出现的错误
-                logger.error(f"Error calling OpenAI API: {e}")
+        if meta and "error" not in meta:
+            return self.opt_context(meta)
 
         return "哎呀,搜索数据失败啦,请换一个内容或者再问我一次。"
+
+    def handle_search(self, content, e_context):
+        meta = None
+        headers = {
+            'Content-Type': 'application/json',
+            'WebPilot-Friend-UID': 'fatwang2'
+        }
+        payload = json.dumps({"ur": content})
+        try:
+            api_url = "https://gpts.webpilot.ai/api/visit-web"
+            response = requests.request("POST", api_url, headers=headers, data=payload)
+            response.raise_for_status()
+            data = json.loads(response.text)
+            meta = data.get('content')  # 获取data字段
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"An error occurred: {e}")
+
+        if meta and "error" not in meta:
+            return self.opt_context(meta)
+
+        return "哎呀,搜索数据失败啦,请换一个内容或者再问我一次。"
+
+    def opt_context(self, meta):
+        try:
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {conf().get("open_ai_api_key")}'  # 使用你的OpenAI API密钥
+            }
+            data = {
+                "model": "gpt-3.5-turbo-16k-0613",
+                "messages": [
+                    {"role": "system",
+                     "content": "你是一个新闻专家，我会给你发一些网页内容，请你用简单明了的语言做总结,不超过500字"},
+                    {"role": "user", "content": meta}
+                ]
+            }
+            proxy = conf().get("proxy")
+            proxies = {
+                'http': proxy,
+                'https': proxy,
+            } if proxy else {}
+            response = requests.post(
+                conf().get("open_ai_api_base", "https://api.openai.com/v1") + "/chat/completions", headers=headers,
+                data=json.dumps(data), proxies=proxies)
+            response.raise_for_status()
+
+            # 处理响应数据
+            response_data = response.json()
+            # 这里可以根据你的需要处理响应数据
+            # 解析 JSON 并获取 content
+            if "choices" in response_data and len(response_data["choices"]) > 0:
+                first_choice = response_data["choices"][0]
+                if "message" in first_choice and "content" in first_choice["message"]:
+                    return first_choice["message"]["content"]
+        except requests.exceptions.RequestException as e:
+            # 处理可能出现的错误
+            logger.error(f"Error calling OpenAI API: {e}")
 
     def contains_chinese(slef, s):
         for c in s:

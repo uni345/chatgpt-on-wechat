@@ -216,23 +216,23 @@ class ChatChannel(Channel):
                 cmsg = context["msg"]
                 cmsg.prepare()
                 file_path = context.content
+                redis_util = RedisUtil()
                 if context.get("isgroup", False):
                     redis_key = redis_key_const.ASK_IMG_PRE + context["msg"].actual_user_id
+                    group_key = redis_key_const.LATS_GROUP_IMG_PRE + context["msg"].from_user_id
+                    redis_util.set_key_with_expiry(group_key, file_path, 3600)
                 else:
                     redis_key = redis_key_const.ASK_IMG_PRE + context["msg"].from_user_id
 
-                RedisUtil().set_key_with_expiry(redis_key, file_path, 3600)
+                redis_util.set_key_with_expiry(redis_key, file_path, 3600)
 
-            elif context.type == ContextType.ATTACHMENT and context.content.endswith(".txt"):
+            elif context.type == ContextType.ATTACHMENT:
                 cmsg = context["msg"]
                 cmsg.prepare()
                 file_path = context.content
                 file_size = os.stat(file_path).st_size
-                if file_size < 1024 * 1024:
-                    f = open(file_path, encoding='utf8')
-                    lines = f.read()
-                    new_context = self._compose_context(ContextType.TEXT, lines, **context.kwargs)
-                    reply = self._generate_reply(new_context)
+                print(file_path + " 文件大小: " + file_size / (1024 * 1024) + "m")
+
             else:
                 logger.error("[WX] unknown context type: {}".format(context.type))
                 return
