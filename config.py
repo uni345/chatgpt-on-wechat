@@ -141,8 +141,9 @@ available_setting = {
     "redis_pwd": "",
     "redis_port": "",
     "image_max_per_day": 10,
-    "gpt4_token_per_day": 10000,
-    "gpt4_token_not_enough": "你今日的token已用完"
+    "gpt4_token_per_day": 5000,
+    "gpt4_token_not_enough": "你的GPT4额度已用完",
+    "gpt_enable": True
 }
 
 

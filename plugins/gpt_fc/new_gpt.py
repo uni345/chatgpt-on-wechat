@@ -73,7 +73,7 @@ class NewGpt(Plugin):
                 RedisUtil().set_key_with_expiry(redis_key, "1", 3600)
                 reply = Reply()  # 创建一个回复对象
                 reply.type = ReplyType.TEXT
-                reply.content = "好的,我将用语音回复您。"
+                reply.content = "好的,接下来我将用语音回复你。"
                 e_context["reply"] = reply
                 e_context.action = EventAction.BREAK_PASS
                 return
@@ -84,6 +84,9 @@ class NewGpt(Plugin):
             redis_value = RedisUtil().get_key(redis_key)
             if redis_value and int(redis_value) == 1:
                 e_context["context"]["desire_rtype"] = ReplyType.VOICE
+
+        if not conf().get("gpt_enable", True):
+            return
 
         curdir = os.path.dirname(__file__)
         config_path = os.path.join(curdir, "config.json")
@@ -131,6 +134,7 @@ class NewGpt(Plugin):
             "role": "user",
             "content": content
         })
+        openai.api_base = conf().get("open_ai_api_base")
         openai.api_key = conf().get("open_ai_api_key")
         openai.proxy = conf().get("proxy")
         response = openai.ChatCompletion.create(

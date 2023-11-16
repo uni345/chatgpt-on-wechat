@@ -222,17 +222,25 @@ class Godcmd(Plugin):
                 conf()["model"] = const.GPT3
                 Bridge().reset_bot()
                 rst = "模型已切换为: GTP-3.5"
-
-        if "查看模型" == content or "当前模型" == content:
-            model = conf().get("model")
-            if model == const.GPT3:
-                rst = "当前模型: GTP-3.5"
-            elif model == const.GPT4_TURBO_PREVIEW:
-                rst = "当前模型: GPT-4"
-            elif model == const.WENXIN:
-                rst = "当前模型: 文心一言"
-            elif model == const.XUNFEI:
-                rst = "当前模型: 讯飞星火"
+            elif "重载配置" in content:
+                load_config()
+                rst = "配置已重载"
+            elif "停止GTP" in content.lower():
+                conf()["gpt_enable"] = False
+                rst = "GPT已停用"
+            elif "开启GTP" in content.lower():
+                conf()["gpt_enable"] = True
+                rst = "GPT已开启"
+            elif "查看模型" == content or "当前模型" == content:
+                model = conf().get("model")
+                if model == const.GPT3:
+                    rst = "当前模型: GTP-3.5"
+                elif model == const.GPT4_TURBO_PREVIEW:
+                    rst = "当前模型: GPT-4"
+                elif model == const.WENXIN:
+                    rst = "当前模型: 文心一言"
+                elif model == const.XUNFEI:
+                    rst = "当前模型: 讯飞星火"
 
         if rst:
             reply = Reply()
