@@ -55,14 +55,23 @@ class NewGpt(Plugin):
         content = e_context["context"].content
         user_id = context["msg"].actual_user_id if context.get("isgroup", False) else context[
             "msg"].from_user_id
-        pattern_cv = r"取消语音|取消音频|取消语音回复|取消音频回复|不要生成音频"
-        pattern_sv = r"语音回复| 语音回复我$|回复语音|用语音| 生成音频$|生成音频给我$|生成语音$|生成语音给我$"
+        pattern_cv = r"取消语音$|取消音频$|取消语音回复$|取消音频回复$|不要生成音频$"
+        pattern_sv = r"语音回复$|语音回复我$|回复语音$|^用语音| 生成音频$|生成音频给我$|生成语音$|生成语音给我$"
         pattern_sl = r"^用日语|^用韩语|^用英语|^用德语|^用粤语|^用葡萄牙语|^用印度语|^用越南语|^用朝鲜语|^用马来西亚语|^用俄语"
+        pattern_sf = r"(生成(日|韩|英|法|俄|德|葡萄牙|朝鲜|马来西亚|土耳其|印度)语(音频|语音)?)"
         if re.search(pattern_cv, content):
             e_context["context"]["desire_rtype"] = ReplyType.TEXT
             redis_key = redis_key_const.VOICE_REPLY_PRE + user_id
             RedisUtil().delete_key(redis_key)
-        elif re.search(pattern_sl, content):
+            filter_context = re.sub(pattern_sv, "", content).strip()
+            if len(filter_context) == 0:
+                reply = Reply()  # 创建一个回复对象
+                reply.type = ReplyType.TEXT
+                reply.content = "好的,接下来我将用文字回复你"
+                e_context["reply"] = reply
+                e_context.action = EventAction.BREAK_PASS
+                return
+        elif re.search(pattern_sl, content) or re.search(pattern_sf,content):
             e_context["context"]["desire_rtype"] = ReplyType.VOICE
             return
         elif re.search(pattern_sv, content):
@@ -73,7 +82,7 @@ class NewGpt(Plugin):
                 RedisUtil().set_key_with_expiry(redis_key, "1", 3600)
                 reply = Reply()  # 创建一个回复对象
                 reply.type = ReplyType.TEXT
-                reply.content = "好的,接下来我将用语音回复你。"
+                reply.content = "好的,接下来我将用语音回复你"
                 e_context["reply"] = reply
                 e_context.action = EventAction.BREAK_PASS
                 return
@@ -140,11 +149,11 @@ class NewGpt(Plugin):
         response = openai.ChatCompletion.create(
             model=self.functions_openai_model,
             messages=messages,
-            max_tokens=100,
+            max_tokens=50,
             functions=[
                 {
                     "name": "get_weather",
-                    "description": "获取全球指定城市的天气信息,获取当前日期和时间",
+                    "description": "获取全球指定城市的天气信息",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -183,6 +192,15 @@ class NewGpt(Plugin):
                 {
                     "name": "ask_image",
                     "description": "解读和理解图片内容, 比如：图片里有什么？图片中问题怎么答？",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                },
+
+                {
+                    "name": "any_question",
+                    "description": "用于回答用户任何问题",
                     "parameters": {
                         "type": "object",
                         "properties": {}
@@ -256,6 +274,9 @@ class NewGpt(Plugin):
                     total_tokens = open_ai_response.get('usage', {}).get('total_tokens')
                     redis_client.decrement(redis_key_const.TOKEN_LEFT_PRE + user_id, total_tokens)
                 return function_response
+            elif function_name == "any_question":
+                logger.debug(f"any_question: {message['content']}")  # 打印模型的响应
+                return None
 
         else:
             # 如果模型不希望调用函数，直接继续

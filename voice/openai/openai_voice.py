@@ -21,6 +21,7 @@ import re
 class OpenaiVoice(Voice):
     def __init__(self):
         openai.api_key = conf().get("open_ai_api_key")
+        openai.proxy = conf().get("proxy")
 
     def voiceToText(self, voice_file):
         logger.debug("[Openai] voice file name={}".format(voice_file))
@@ -32,7 +33,7 @@ class OpenaiVoice(Voice):
             reply = Reply(ReplyType.TEXT, text)
             logger.info("[Openai] voiceToText text={} voice file name={}".format(text, voice_file))
         except Exception as e:
-            reply = Reply(ReplyType.ERROR, "我暂时还无法听清您的语音，请稍后再试吧~")
+            reply = Reply(ReplyType.TEXT, "我暂时还无法听清您的语音，请稍后再试吧~")
         finally:
             return reply
 
